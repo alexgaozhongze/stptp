@@ -17,23 +17,24 @@ class UserController extends Controller
         $this->stmbuy = new Stmbuy();
     }
 
-    public function showProfile()
+    public function login()
     {
-        $this->stmbuy->login();
+        $this->stmbuy->curlLogin();
     }
 
     public function logindata()
     {
-        echo $this->stmbuy->loginData();
+        $userInfo = $this->stmbuy->curlLoginData();
+        dump($userInfo);
     }
 
     public function index()
     {
-        echo $this->stmbuy->index();
+        echo $this->stmbuy->curlIndex();
     }
 
     public function my()
     {
-        echo $this->stmbuy->my();
+        echo $this->stmbuy->curlMy();
     }
 }

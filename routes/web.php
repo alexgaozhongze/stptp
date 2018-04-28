@@ -15,11 +15,8 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-Route::get('foo', function () {
-    return 'sss';
-});
-
-Route::get('user/profile', 'UserController@showProfile');
+Route::get('login', 'UserController@login');
 Route::get('logineddata.json', 'UserController@logindata');
 Route::get('index', 'UserController@index');
 Route::get('my', 'UserController@my');
+Route::get('item', 'ItemController@index');
