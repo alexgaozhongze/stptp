@@ -14,7 +14,7 @@ class Stmbuy
 
     public function __construct()
     {
-        self::$cookieFiles = public_path().'/cookie/stmbuy.cookie'; //设置cookie保存的路径
+        self::$cookieFiles = public_path().'/cookie/.stmbuy.cookie'; //设置cookie保存的路径
     }
 
     private function loginPost($url, $post)
