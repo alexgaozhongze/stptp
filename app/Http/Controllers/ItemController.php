@@ -19,8 +19,17 @@ class ItemController extends Controller
 
     public function index()
     {
-        $minPrice = $this->stmbuy->itemMinSalePrice('2451373801');
+
+        $this->stmbuy->checkItemSalePrice();die;
+
+
+
+        $minPrice = $this->stmbuy->itemMinSalePrice('2451526758');
         dump($minPrice);
+
+
+
+
         die;
 
         return;

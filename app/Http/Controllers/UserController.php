@@ -25,7 +25,7 @@ class UserController extends Controller
     public function logindata()
     {
         $userInfo = $this->stmbuy->curlLoginData();
-        dump($userInfo);
+        echo json_encode($userInfo);
     }
 
     public function index()

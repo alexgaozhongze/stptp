@@ -12,10 +12,10 @@ class Stmbuy
 {
     private static $cookieFiles;
 
-    public function __construct()
+    public function __construct($autoLogin = true)
     {
         self::$cookieFiles = public_path().'/cookie/.stmbuy.cookie';
-        self::autoLogin();
+        $autoLogin && self::autoLogin();
     }
 
     private function loginPost($url, $post)
@@ -47,8 +47,8 @@ class Stmbuy
         $url = "http://api.stmbuy.com/member/login.json";
         $post = [
             'username' => 'johnnyalex',
-            'password' => '4d8d0415c811fe4ca0f61a5e6847282f',
-            'hmackey' => '5eb7qhbxl8w',
+            'password' => '7b0b4ff311fe586cad39f5a77fab3bdc',
+            'hmackey' => 'eollt0hj994',
             'keep' => 0
         ];
         self::loginPost($url, $post);
@@ -76,21 +76,68 @@ class Stmbuy
         return self::getContent("http://www.stmbuy.com/pubg/item-$itemId/onsale&page=$page");
     }
 
+    public function curlOnSale()
+    {
+        return self::getContent('http://www.stmbuy.com/my/backpack.html?tab=onsale');
+    }
+
+    public function curlOnSaleGoods()
+    {
+        return self::getContent('http://www.stmbuy.com/my/onsaleGoods.html?category_id=1793pv37tad5&list_mode=0&row=50&page=1');
+    }
+
     public function autoLogin()
     {
         $userInfo = self::curlLoginData();
         isset($userInfo['status']) && (false == $userInfo['status']) && self::curlLogin();
     }
 
-    public function itemMinSalePrice($itemId)
+    public function itemMinSalePrice($itemId, $page = 1)
     {
-        $html = self::curlItemIndex($itemId, 1);
+        $html = self::curlItemIndex($itemId, $page);
         $matchAry = [];
-//        preg_match_all("/data-goodsid=\"\d+\"[\s\S]{1}data-price=\"\d+\"/", $html, $matchAry);
-        preg_match("/data-price=\"\d+/", $html, $matchAry);
-        $matchAry = preg_replace("/data-price=\"/", '', $matchAry);
-        $minPrice = false;
-        is_array($matchAry) && $minPrice = (int) reset($matchAry);
-        return $minPrice;
+        preg_match('/(<li).*?(\/li)/is', $html, $matchAry);
+        $matchStr = reset($matchAry);
+        preg_match("/data-price=\"\d+/", $matchStr, $matchAry);
+        $matchPrice = preg_replace('/data-price="/', '', reset($matchAry));
+        $minPrice = $matchPrice / 100;
+        preg_match('/(title=").*?(">)/is', $html, $matchAry);
+        $matchName = preg_replace(['/(title=")/', '/">/'], '', reset($matchAry));
+        $isMine = false;
+        if ('alexgaozhongze' !== $matchName) {
+            $minPrice -= 0.01;
+        } else {
+            $isMine = true;
+        }
+        return [
+            'minPrice' => $minPrice,
+            'isMine' => $isMine
+        ];
+    }
+
+    public function itemOnSale()
+    {
+        $html = self::curlOnSaleGoods();
+        $matchAry = [];
+        $onSaleItem = [];
+        preg_match('/(<ul[\s\S]{1}class="goods-list).*?(\/ul)/is', $html, $matchAry);
+        preg_match_all('/(<li).*?(\/li)/is', reset($matchAry), $matchAry);
+        foreach (reset($matchAry) as $value) {
+            preg_match('/(\'\[").*?(item-\d+)/is', $value, $matchAry);
+            $matchStr = reset($matchAry);
+            $itemId = preg_replace(['/(\').*?(\')/', '/[\r\n\s]/', '/data-goodslink="\/pubg\/item-/'], '', $matchStr);
+            $goodId = preg_replace(['/\'/', '/[\r\n\s]/', '/data-goodslink="\/pubg\/item-\d+/'], '', $matchStr);
+            $goodAry = json_decode($goodId, true);
+            $onSaleItem[$itemId] = $goodAry;
+        }
+        return $onSaleItem;
+    }
+
+    public function checkItemSalePrice()
+    {
+        $html = self::curlOnSaleGoods();
+        echo $html;
+        dump($html);
+
     }
 }

@@ -16,7 +16,13 @@ Route::get('/', function () {
 });
 
 Route::get('login', 'UserController@login');
-Route::get('logineddata.json', 'UserController@logindata');
+//Route::get('logineddata.json', 'UserController@logindata');
 Route::get('index', 'UserController@index');
 Route::get('my', 'UserController@my');
 Route::get('item', 'ItemController@index');
+
+Route::get('stmbuyIndex', 'StmbuyController@index');
+Route::get('stmbuyTest', 'StmbuyController@test');
+
+
+Route::get('stmbuyAutoSale', 'StmbuyController@autoSale');
