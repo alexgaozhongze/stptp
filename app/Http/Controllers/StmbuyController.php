@@ -15,28 +15,35 @@ class StmbuyController extends Controller
         [
             'itemId' => '2451526758',
             'itemCostPrice' => '10.50'
+        ],
+//        [
+//            'itemId' => '2240315126',
+//            'itemCostPrice' => '10.00'
+//        ],
+        [
+            'itemId' => '2662539761',
+            'itemCostPrice' => '0.50'
         ]
     ];
 
     public function __construct()
     {
-        $this->stmbuy = new Stmbuy(false);
+        $this->stmbuy = new Stmbuy(true);
     }
 
     public function index()
     {
-        $this->stmbuy->checkLogin = false;
         echo $this->stmbuy->curlIndex();
     }
 
     public function test()
     {
-        $pas = 'alex333';
-        $key = 'eollt0hj994';
-        $res = hash_hmac('sha1', $pas, $key);
-        echo md5($res);
-        echo '<br/>';
-        echo $res;
+        $this->stmbuy->csrfToken();
+    }
+
+    public function htmlTest()
+    {
+        echo $this->stmbuy->csrfToken();
     }
 
     public function autoSale()
@@ -46,7 +53,14 @@ class StmbuyController extends Controller
         foreach ($itemPrice as $value) {
             $minPrice = $this->stmbuy->itemMinSalePrice($value['itemId']);
             if (!$minPrice['isMine'] && $minPrice['minPrice'] > $value['itemCostPrice']) {
-                dump($itemOnSale[$value['itemId']]);
+                $data = [];
+                foreach ($itemOnSale[$value['itemId']]['goodIds'] as $value) {
+                    $data[] = [
+                        'id' => $value,
+                        'price' => $minPrice['minPrice'] * 100
+                    ];
+                }
+                $this->stmbuy->changePrice($data);
             }
         }
     }

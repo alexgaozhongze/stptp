@@ -11,10 +11,12 @@ namespace App;
 class Stmbuy
 {
     private static $cookieFiles;
+    private static $csrfTokenFiles;
 
     public function __construct($autoLogin = true)
     {
-        self::$cookieFiles = public_path().'/cookie/.stmbuy.cookie';
+        self::$cookieFiles = public_path() . '/cookie/.stmbuy.cookie';
+        self::$csrfTokenFiles = public_path() . '/cookie/.stmbuy.csrftoken';
         $autoLogin && self::autoLogin();
     }
 
@@ -31,28 +33,36 @@ class Stmbuy
         curl_close($ch);
     }
 
-    private function getContent($url){
+    private function getContent($url)
+    {
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_HEADER, 0);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
         curl_setopt($ch, CURLOPT_COOKIEFILE, self::$cookieFiles);
         $response = curl_exec($ch);
         curl_close($ch);
         return $response;
     }
 
-    public function curlLogin()
+    private function postData($url, $post)
+    {
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_HEADER, 0);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_POST, 1);
+        curl_setopt($ch, CURLOPT_COOKIEFILE, self::$cookieFiles);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($post));
+        $response = curl_exec($ch);
+        curl_close($ch);
+        return $response;
+    }
+
+    public function curlLogin($data)
     {
         $url = "http://api.stmbuy.com/member/login.json";
-        $post = [
-            'username' => 'johnnyalex',
-            'password' => '7b0b4ff311fe586cad39f5a77fab3bdc',
-            'hmackey' => 'eollt0hj994',
-            'keep' => 0
-        ];
-        self::loginPost($url, $post);
-//        self::getContent('http://www.stmbuy.com/logineddata.json');
+        self::loginPost($url, $data);
     }
 
     public function curlLoginData()
@@ -86,10 +96,34 @@ class Stmbuy
         return self::getContent('http://www.stmbuy.com/my/onsaleGoods.html?category_id=1793pv37tad5&list_mode=0&row=50&page=1');
     }
 
+    public function login()
+    {
+        $username = 'johnnyalex';
+        $password = 'alex333';
+        $hmackey = base_convert(time(), 10, 33);
+        $hamcPwd = md5($hmackey . md5($username . $password));
+        $data = [
+            'username' => $username,
+            'password' => $hamcPwd,
+            'hmackey' => $hmackey,
+            'keep' => 0
+        ];
+        self::curlLogin($data);
+    }
+
     public function autoLogin()
     {
         $userInfo = self::curlLoginData();
-        isset($userInfo['status']) && (false == $userInfo['status']) && self::curlLogin();
+        isset($userInfo['status']) && ('error' == $userInfo['status']) && self::login();
+    }
+
+    public function csrfToken()
+    {
+        $html = self::curlOnSale();
+        $matchAry = [];
+        preg_match('/(csrfToken).*?(;)/', $html, $matchAry);
+        $matchToken = preg_replace(['/csrfToken[\s]=[\s]/', '/[\';]/'], '', reset($matchAry));
+        return $matchToken;
     }
 
     public function itemMinSalePrice($itemId, $page = 1)
@@ -123,14 +157,29 @@ class Stmbuy
         preg_match('/(<ul[\s\S]{1}class="goods-list).*?(\/ul)/is', $html, $matchAry);
         preg_match_all('/(<li).*?(\/li)/is', reset($matchAry), $matchAry);
         foreach (reset($matchAry) as $value) {
-            preg_match('/(\'\[").*?(item-\d+)/is', $value, $matchAry);
+            preg_match('/(data-id=").*?(item-\d+)/is', $value, $matchAry);
             $matchStr = reset($matchAry);
-            $itemId = preg_replace(['/(\').*?(\')/', '/[\r\n\s]/', '/data-goodslink="\/pubg\/item-/'], '', $matchStr);
-            $goodId = preg_replace(['/\'/', '/[\r\n\s]/', '/data-goodslink="\/pubg\/item-\d+/'], '', $matchStr);
-            $goodAry = json_decode($goodId, true);
-            $onSaleItem[$itemId] = $goodAry;
+            $itemId = preg_replace(['/(data-id=").*?(]\')/', '/[\r\n\s]/', '/data-goodslink="\/pubg\/item-/'], '', $matchStr);
+            $goodIds = preg_replace(['/(data-id=").*?(data-ids=)/', '/[\r\n\s]/', '/\'/', '/data-goodslink="\/pubg\/item-\d+/'], '', $matchStr);
+            preg_match('/(data-id=").*?(")/', $matchStr, $matchAry);
+            $goodId = preg_replace(['/data-id=/', '/"/'], '', reset($matchAry));
+            $goodAry = json_decode($goodIds, true);
+            $onSaleItem[$itemId] = [
+                'goodId' => $goodId,
+                'goodIds' => $goodAry
+            ];
         }
         return $onSaleItem;
+    }
+
+    public function changePrice($param)
+    {
+        $csrfToken = self::csrfToken();
+        $data = [
+            'csrf_token' => $csrfToken,
+            'param' => $param
+        ];
+        self::postData('http://api.stmbuy.com/member/item/changeprice.json', $data);
     }
 
     public function checkItemSalePrice()
