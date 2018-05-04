@@ -16,12 +16,16 @@ class StmbuyController extends Controller
             'itemId' => '2451526758',
             'itemCostPrice' => '10.50'
         ],
-//        [
-//            'itemId' => '2240315126',
-//            'itemCostPrice' => '10.00'
-//        ],
+        [
+            'itemId' => '2662539730',
+            'itemCostPrice' => '3.50'
+        ],
         [
             'itemId' => '2662539761',
+            'itemCostPrice' => '0.50'
+        ],
+        [
+            'itemId' => '2662539708',
             'itemCostPrice' => '0.50'
         ]
     ];
