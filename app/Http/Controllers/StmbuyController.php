@@ -7,6 +7,7 @@
  */
 namespace App\Http\Controllers;
 use App\Stmbuy;
+use Illuminate\Support\Facades\DB;
 
 class StmbuyController extends Controller
 {
@@ -42,7 +43,9 @@ class StmbuyController extends Controller
 
     public function test()
     {
-        $this->stmbuy->csrfToken();
+//        $this->stmbuy->csrfToken();
+        $user = DB::select('select * from test');
+        dd($user);
     }
 
     public function htmlTest()

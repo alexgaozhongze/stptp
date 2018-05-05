@@ -11,12 +11,10 @@ namespace App;
 class Stmbuy
 {
     private static $cookieFiles;
-    private static $csrfTokenFiles;
 
     public function __construct($autoLogin = true)
     {
         self::$cookieFiles = public_path() . '/cookie/.stmbuy.cookie';
-        self::$csrfTokenFiles = public_path() . '/cookie/.stmbuy.csrftoken';
         $autoLogin && self::autoLogin();
     }
 
