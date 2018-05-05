@@ -12,7 +12,7 @@ CREATE TABLE `category` (
   `c_id` varchar(50) NOT NULL DEFAULT '' COMMENT '分类id',
   `c_code` varchar(50) NOT NULL DEFAULT '' COMMENT '分类代码',
   `c_name` varchar(50) NOT NULL DEFAULT '' COMMENT '分类名称',
-  KEY (`p_id`)
+  KEY `p_id` (`p_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='分类';
 
 
