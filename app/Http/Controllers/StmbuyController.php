@@ -33,37 +33,20 @@ class StmbuyController extends Controller
 
     public function __construct()
     {
-        $this->stmbuy = new Stmbuy(true);
-    }
-
-    public function index()
-    {
-        echo $this->stmbuy->curlIndex();
-    }
-
-    public function test()
-    {
-//        $this->stmbuy->csrfToken();
-        $user = DB::select('select * from test');
-        dd($user);
-    }
-
-    public function htmlTest()
-    {
-        echo $this->stmbuy->csrfToken();
+        $this->stmbuy = new Stmbuy();
     }
 
     public function autoSale()
     {
         $itemPrice = $this->itemPrice;
         $itemOnSale = $this->stmbuy->itemOnSale();
-        foreach ($itemPrice as $value) {
-            $minPrice = $this->stmbuy->itemMinSalePrice($value['itemId']);
-            if (!$minPrice['isMine'] && $minPrice['minPrice'] > $value['itemCostPrice']) {
+        foreach ($itemPrice as $ipv) {
+            $minPrice = $this->stmbuy->itemMinSalePrice($ipv['itemId']);
+            if ($minPrice['needChange'] && $minPrice['minPrice'] > $ipv['itemCostPrice']) {
                 $data = [];
-                foreach ($itemOnSale[$value['itemId']]['goodIds'] as $value) {
+                foreach ($itemOnSale[$ipv['itemId']]['goodIds'] as $iosv) {
                     $data[] = [
-                        'id' => $value,
+                        'id' => $iosv,
                         'price' => $minPrice['minPrice'] * 100
                     ];
                 }
@@ -71,4 +54,5 @@ class StmbuyController extends Controller
             }
         }
     }
+
 }

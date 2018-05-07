@@ -11,21 +11,23 @@ namespace App;
 class Stmbuy
 {
     private static $cookieFiles;
+    private static $p_id;
 
-    public function __construct($autoLogin = true)
+    public function __construct($p_id)
     {
         self::$cookieFiles = public_path() . '/cookie/.stmbuy.cookie';
-        $autoLogin && self::autoLogin();
+        self::$p_id = $p_id;
+        self::autoLogin();
     }
 
     private function loginPost($url, $post)
     {
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_HEADER, 0);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 0);
+        curl_setopt($ch, CURLOPT_HEADER, false);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_COOKIEJAR, self::$cookieFiles);
-        curl_setopt($ch, CURLOPT_POST, 1);
+        curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($post));
         curl_exec($ch);
         curl_close($ch);
@@ -94,6 +96,21 @@ class Stmbuy
         return self::getContent('http://www.stmbuy.com/my/onsaleGoods.html?category_id=1793pv37tad5&list_mode=0&row=50&page=1');
     }
 
+    public function curlItemGoods($c_id)
+    {
+        return self::getContent("http://www.stmbuy.com/my/itemgoods.html?category_id=$c_id&list_mode=0");
+    }
+
+    public function curlBackpack()
+    {
+        return self::getContent("http://www.stmbuy.com/my/backpack.html?tab=item");
+    }
+
+    public function curlBuyLog($keyword)
+    {
+        return self::getContent("http://www.stmbuy.com/my/buylog?keywords=$keyword");
+    }
+
     public function login()
     {
         $username = 'johnnyalex';
@@ -115,9 +132,8 @@ class Stmbuy
         isset($userInfo['status']) && ('error' == $userInfo['status']) && self::login();
     }
 
-    public function csrfToken()
+    public function csrfToken($html)
     {
-        $html = self::curlOnSale();
         $matchAry = [];
         preg_match('/(csrfToken).*?(;)/', $html, $matchAry);
         $matchToken = preg_replace(['/csrfToken[\s]=[\s]/', '/[\';]/'], '', reset($matchAry));
@@ -128,22 +144,25 @@ class Stmbuy
     {
         $html = self::curlItemIndex($itemId, $page);
         $matchAry = [];
-        preg_match('/(<li).*?(\/li)/is', $html, $matchAry);
-        $matchStr = reset($matchAry);
-        preg_match("/data-price=\"\d+/", $matchStr, $matchAry);
-        $matchPrice = preg_replace('/data-price="/', '', reset($matchAry));
-        $minPrice = $matchPrice / 100;
-        preg_match('/(title=").*?(">)/is', $html, $matchAry);
-        $matchName = preg_replace(['/(title=")/', '/">/'], '', reset($matchAry));
-        $isMine = false;
-        if ('alexgaozhongze' !== $matchName) {
-            $minPrice -= 0.01;
-        } else {
-            $isMine = true;
+        preg_match_all('/(<li).*?(\/li)/is', $html, $matchAry);
+        foreach (reset($matchAry) as $value) {
+            preg_match("/data-price=\"\d+/", $value, $matchAry);
+            $matchPrice = preg_replace('/data-price="/', '', reset($matchAry));
+            $minPrice = $matchPrice / 100;
+            preg_match('/(title=").*?(">)/is', $html, $matchAry);
+            $matchName = preg_replace(['/(title=")/', '/">/'], '', reset($matchAry));
+            if ('alexgaozhongze' != $matchName) {
+                $needChange = true;
+                $minPrice = $matchPrice / 100 - 0.01;
+                break;
+            } else {
+                $needChange = false;
+                $minPrice = $matchPrice / 100 - 0.01;
+            }
         }
         return [
             'minPrice' => $minPrice,
-            'isMine' => $isMine
+            'needChange' => $needChange
         ];
     }
 
@@ -172,7 +191,8 @@ class Stmbuy
 
     public function changePrice($param)
     {
-        $csrfToken = self::csrfToken();
+        $html = self::curlOnSale();
+        $csrfToken = self::csrfToken($html);
         $data = [
             'csrf_token' => $csrfToken,
             'param' => $param
@@ -180,11 +200,58 @@ class Stmbuy
         self::postData('http://api.stmbuy.com/member/item/changeprice.json', $data);
     }
 
-    public function checkItemSalePrice()
+    public function backpack($c_id)
     {
-        $html = self::curlOnSaleGoods();
-        echo $html;
-        dump($html);
+        $html = self::curlItemGoods($c_id);
+        $matchAry = [];
+        $backpackItem = [];
+        preg_match('/(<ul[\s\S]{1}class="goods-list).*?(\/ul)/is', $html, $matchAry);
+        preg_match_all('/(<li).*?(\/li)/is', reset($matchAry), $matchAry);
+        foreach (reset($matchAry) as $value) {
+            preg_match('/(data-id=").*?(item-\d+)/is', $value, $matchAry);
+            $matchStr = reset($matchAry);
+            $itemId = preg_replace('/(data-id=").*?(item-)/is', '', $matchStr);
+            $goodIds = preg_replace(['/(data-id=").*?(\')/is', '/(\').*?(item-\d+)/is'], '', $matchStr);
+            preg_match('/(data-id=").*?(")/', $matchStr, $matchAry);
+            $goodAry = json_decode($goodIds, true);
+            $backpackItem[$itemId] = $goodAry;
+        }
+        return $backpackItem;
+    }
 
+    public function putOn($param)
+    {
+        $html = self::curlBackpack();
+        $csrfToken = self::csrfToken($html);
+        $data = [
+            'csrf_token' => $csrfToken,
+            'param' => $param
+        ];
+        self::postData('http://api.stmbuy.com/member/item/puton.json', $data);
+    }
+
+    public function itemCostPrice($itemPpid, $itemSpid)
+    {
+        dump($itemPpid);
+        dump($itemSpid);
+        $res = self::curlBuyLog('九头蛇大行动');
+        dump($res);
+    }
+
+    public function autoSale($c_id)
+    {
+        $backpackItem = self::backpack($c_id);
+        foreach ($backpackItem as $bik => $biv) {
+            $minPrice = self::itemMinSalePrice($bik);
+            $costPrice = self::itemCostPrice($bik, $biv);
+            $data = [];
+            foreach ($biv as $bivv) {
+                $data[] = [
+                    'id' => $bivv,
+                    'price' => $minPrice['minPrice'] * 100
+                ];
+            }
+//            self::putOn($data);
+        }
     }
 }

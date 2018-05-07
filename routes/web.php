@@ -27,3 +27,4 @@ Route::get('stmbuyHtmlTest', 'StmbuyController@htmlTest');
 
 
 Route::get('stmbuyAutoSale', 'StmbuyController@autoSale');
+Route::get('autoSale', 'SaleController@autoSale');
