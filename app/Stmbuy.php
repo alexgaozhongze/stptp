@@ -8,6 +8,8 @@
 
 namespace App;
 
+use Illuminate\Support\Facades\DB;
+
 class Stmbuy
 {
     private static $cookieFiles;
@@ -148,7 +150,6 @@ class Stmbuy
         foreach (reset($matchAry) as $value) {
             preg_match("/data-price=\"\d+/", $value, $matchAry);
             $matchPrice = preg_replace('/data-price="/', '', reset($matchAry));
-            $minPrice = $matchPrice / 100;
             preg_match('/(title=").*?(">)/is', $html, $matchAry);
             $matchName = preg_replace(['/(title=")/', '/">/'], '', reset($matchAry));
             if ('alexgaozhongze' != $matchName) {
@@ -157,7 +158,8 @@ class Stmbuy
                 break;
             } else {
                 $needChange = false;
-                $minPrice = $matchPrice / 100 - 0.01;
+                $minPrice = $matchPrice / 100;
+                break;
             }
         }
         return [
@@ -230,12 +232,36 @@ class Stmbuy
         self::postData('http://api.stmbuy.com/member/item/puton.json', $data);
     }
 
-    public function itemCostPrice($itemPpid, $itemSpid)
+    public function itemCostPrice($gid, $pdtid)
     {
-        dump($itemPpid);
-        dump($itemSpid);
-        $res = self::curlBuyLog('九头蛇大行动');
-        dump($res);
+        $keyword = DB::table('good')
+            ->where([['p_id', '=', self::$p_id], ['g_id', '=', $gid]])
+            ->select('g_keyword')
+            ->get()->toArray();
+        $keyword = reset($keyword);
+        $html = self::curlBuyLog($keyword->g_keyword);
+        $matchAry = [];
+        preg_match('/(<tbody>).*?(<\/tbody>)/is', $html, $matchAry);
+        preg_match_all('/(<tr>).*?(<\/tr>)/is', reset($matchAry), $matchAry);
+        $costPrice = [];
+        $allCostPrice = [];
+        foreach (reset($matchAry) as $value) {
+            preg_match_all('/(<td).*?(<\/td>)/is', $value, $matchAry);
+            $buyInfo = reset($matchAry);
+            preg_match("/$gid/", $buyInfo[0], $matchAry);
+            if ($matchAry) {
+                preg_match_all("/\d+/", $buyInfo[3], $matchAry);
+                $buyPrice = implode('.', reset($matchAry));
+                $buyNum = preg_replace('/(<).*?(>)/is', '', $buyInfo[5]);
+                for ($i = 0; $i < $buyNum; $i++) {
+                    $allCostPrice[] = $buyPrice;
+                }
+            }
+        }
+        foreach ($pdtid as $key => $value) {
+            $costPrice[$value] = $allCostPrice[$key];
+        }
+        return $costPrice;
     }
 
     public function autoSale($c_id)
@@ -244,6 +270,8 @@ class Stmbuy
         foreach ($backpackItem as $bik => $biv) {
             $minPrice = self::itemMinSalePrice($bik);
             $costPrice = self::itemCostPrice($bik, $biv);
+            dump($costPrice);
+            dump($minPrice);
             $data = [];
             foreach ($biv as $bivv) {
                 $data[] = [
