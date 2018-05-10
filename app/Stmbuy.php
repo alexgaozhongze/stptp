@@ -9,6 +9,7 @@
 namespace App;
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class Stmbuy
 {
@@ -17,13 +18,14 @@ class Stmbuy
 
     public function __construct($p_id)
     {
-        self::$cookieFiles = public_path() . '/cookie/.stmbuy.cookie';
+        self::$cookieFiles = '/cookie/.stmbuy.cookie';
         self::$p_id = $p_id;
         self::autoLogin();
     }
 
     private function loginPost($url, $post)
     {
+        Storage::makeDirectory(self::$cookieFiles);
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_HEADER, false);
@@ -61,59 +63,59 @@ class Stmbuy
         return $response;
     }
 
-    public function curlLogin($data)
+    private function curlLogin($data)
     {
         $url = "http://api.stmbuy.com/member/login.json";
         self::loginPost($url, $data);
     }
 
-    public function curlLoginData()
+    private function curlLoginData()
     {
         $loginData = self::getContent('http://www.stmbuy.com/logineddata.json');
         return json_decode($loginData, true);
     }
 
-    public function curlIndex()
+    private function curlIndex()
     {
         return self::getContent('http://www.stmbuy.com/');
     }
 
-    public function curlMy()
+    private function curlMy()
     {
         return self::getContent('http://www.stmbuy.com/my');
     }
 
-    public function curlItemIndex($itemId, $page)
+    private function curlItemIndex($itemId, $page)
     {
         return self::getContent("http://www.stmbuy.com/pubg/item-$itemId/onsale&page=$page");
     }
 
-    public function curlOnSale()
+    private function curlOnSale()
     {
         return self::getContent('http://www.stmbuy.com/my/backpack.html?tab=onsale');
     }
 
-    public function curlOnSaleGoods()
+    private function curlOnSaleGoods()
     {
         return self::getContent('http://www.stmbuy.com/my/onsaleGoods.html?category_id=1793pv37tad5&list_mode=0&row=50&page=1');
     }
 
-    public function curlItemGoods($c_id)
+    private function curlItemGoods($c_id)
     {
         return self::getContent("http://www.stmbuy.com/my/itemgoods.html?category_id=$c_id&list_mode=0");
     }
 
-    public function curlBackpack()
+    private function curlBackpack()
     {
         return self::getContent("http://www.stmbuy.com/my/backpack.html?tab=item");
     }
 
-    public function curlBuyLog($keyword)
+    private function curlBuyLog($keyword)
     {
         return self::getContent("http://www.stmbuy.com/my/buylog?keywords=$keyword");
     }
 
-    public function login()
+    private function login()
     {
         $username = 'johnnyalex';
         $password = 'alex333';
@@ -128,13 +130,13 @@ class Stmbuy
         self::curlLogin($data);
     }
 
-    public function autoLogin()
+    private function autoLogin()
     {
         $userInfo = self::curlLoginData();
         isset($userInfo['status']) && ('error' == $userInfo['status']) && self::login();
     }
 
-    public function csrfToken($html)
+    private function csrfToken($html)
     {
         $matchAry = [];
         preg_match('/(csrfToken).*?(;)/', $html, $matchAry);
@@ -142,7 +144,7 @@ class Stmbuy
         return $matchToken;
     }
 
-    public function itemMinSalePrice($itemId, $page = 1)
+    private function itemMinSalePrice($itemId, $page = 1)
     {
         $html = self::curlItemIndex($itemId, $page);
         $matchAry = [];
@@ -168,7 +170,7 @@ class Stmbuy
         ];
     }
 
-    public function itemOnSale()
+    private function itemOnSale()
     {
         $html = self::curlOnSaleGoods();
         $matchAry = [];
@@ -191,7 +193,7 @@ class Stmbuy
         return $onSaleItem;
     }
 
-    public function changePrice($param)
+    private function changePrice($param)
     {
         $html = self::curlOnSale();
         $csrfToken = self::csrfToken($html);
@@ -202,7 +204,7 @@ class Stmbuy
         self::postData('http://api.stmbuy.com/member/item/changeprice.json', $data);
     }
 
-    public function backpack($c_id)
+    private function backpack($c_id)
     {
         $html = self::curlItemGoods($c_id);
         $matchAry = [];
@@ -221,7 +223,7 @@ class Stmbuy
         return $backpackItem;
     }
 
-    public function putOn($param)
+    private function putOn($param)
     {
         $html = self::curlBackpack();
         $csrfToken = self::csrfToken($html);
@@ -233,7 +235,7 @@ class Stmbuy
         return json_decode($response, true);
     }
 
-    public function itemCostPrice($gid, $pdtid)
+    private function itemCostPrice($gid, $pdtid)
     {
         $keyword = DB::table('good')
             ->where([['p_id', '=', self::$p_id], ['g_id', '=', $gid]])
@@ -268,7 +270,7 @@ class Stmbuy
     public function autoSale($c_id)
     {
         self::backpackAutoSale($c_id);
-
+        self::onSaleAutoSale();
     }
 
     private function backpackAutoSale($c_id)
@@ -285,12 +287,13 @@ class Stmbuy
                     'price' => $minPrice['minPrice'] * 100
                 ];
             }
-//            $response = self::putOn($data);
-            $response = true;
-            if (isset($response['errno']) && $response['errno']) {
-
-            } else {
-                self::itemSaleStatusSave($bik, $costPrice);
+            if ($data) {
+                $response = self::putOn($data);
+                if (isset($response['errno']) && $response['errno']) {
+                    Storage::delete(self::$cookieFiles);
+                } else {
+                    self::itemSaleStatusSave($bik, $costPrice);
+                }
             }
         }
     }
@@ -329,5 +332,10 @@ class Stmbuy
             ];
             DB::table('product')->where($data)->update(['pdt_sale_status' => 1]);
         }
+    }
+
+    private function onSaleAutoSale()
+    {
+
     }
 }
