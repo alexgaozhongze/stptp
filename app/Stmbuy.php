@@ -39,8 +39,8 @@ class Stmbuy
     {
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_HEADER, 0);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_HEADER, false);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_COOKIEFILE, self::$cookieFiles);
         $response = curl_exec($ch);
         curl_close($ch);
@@ -51,9 +51,9 @@ class Stmbuy
     {
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_HEADER, 0);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($ch, CURLOPT_POST, 1);
+        curl_setopt($ch, CURLOPT_HEADER, false);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_COOKIEFILE, self::$cookieFiles);
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($post));
         $response = curl_exec($ch);
@@ -229,7 +229,8 @@ class Stmbuy
             'csrf_token' => $csrfToken,
             'param' => $param
         ];
-        self::postData('http://api.stmbuy.com/member/item/puton.json', $data);
+        $response = self::postData('http://api.stmbuy.com/member/item/puton.json', $data);
+        return json_decode($response, true);
     }
 
     public function itemCostPrice($gid, $pdtid)
@@ -266,12 +267,17 @@ class Stmbuy
 
     public function autoSale($c_id)
     {
+        self::backpackAutoSale($c_id);
+
+    }
+
+    private function backpackAutoSale($c_id)
+    {
         $backpackItem = self::backpack($c_id);
         foreach ($backpackItem as $bik => $biv) {
             $minPrice = self::itemMinSalePrice($bik);
             $costPrice = self::itemCostPrice($bik, $biv);
-            dump($costPrice);
-            dump($minPrice);
+            self::itemCostPriceSave($bik, $costPrice);
             $data = [];
             foreach ($biv as $bivv) {
                 $data[] = [
@@ -279,7 +285,49 @@ class Stmbuy
                     'price' => $minPrice['minPrice'] * 100
                 ];
             }
-//            self::putOn($data);
+//            $response = self::putOn($data);
+            $response = true;
+            if (isset($response['errno']) && $response['errno']) {
+
+            } else {
+                self::itemSaleStatusSave($bik, $costPrice);
+            }
+        }
+    }
+
+    private function itemCostPriceSave($g_id, $costPrice)
+    {
+        $addData = [];
+        foreach ($costPrice as $key => $value) {
+            $data = [
+                'p_id' => self::$p_id,
+                'g_id' => $g_id,
+                'pdt_id' => $key
+            ];
+            $checkExists = DB::table('product')->where($data)->get()->toArray();
+            if ($checkExists) {
+                $saveData = [
+                    'pdt_cost_price' => $value,
+                    'pdt_sale_status' => '0'
+                ];
+                DB::table('product')->where($data)->update($saveData);
+            } else {
+                $data['pdt_cost_price'] = $value;
+                $addData[] = $data;
+            }
+        }
+        $addData && DB::table('product')->insert($addData);
+    }
+
+    private function itemSaleStatusSave($g_id, $costPrice)
+    {
+        foreach ($costPrice as $key => $value) {
+            $data = [
+                'p_id' => self::$p_id,
+                'g_id' => $g_id,
+                'pdt_id' => $key
+            ];
+            DB::table('product')->where($data)->update(['pdt_sale_status' => 1]);
         }
     }
 }

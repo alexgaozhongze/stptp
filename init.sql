@@ -51,7 +51,7 @@ DROP TABLE IF EXISTS `good`;
 CREATE TABLE `good` (
   `p_id` int(10) DEFAULT NULL COMMENT '平台id',
   `g_id` bigint(11) DEFAULT NULL COMMENT '商品id',
-  `p_keyword` varchar(50) NOT NULL DEFAULT '' COMMENT '关键词',
+  `g_keyword` varchar(50) NOT NULL DEFAULT '' COMMENT '关键词',
   `g_status` tinyint(1) NOT NULL DEFAULT '1' COMMENT '数据记录状态，0为废弃，1为有效',
   KEY `g_id` (`g_id`),
   KEY `g_status` (`g_status`)
@@ -64,6 +64,7 @@ CREATE TABLE `good` (
 
 LOCK TABLES `good` WRITE;
 /*!40000 ALTER TABLE `good` DISABLE KEYS */;
+INSERT INTO `good` VALUES (1,2151568372,'九头蛇大行动',1);
 /*!40000 ALTER TABLE `good` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -100,17 +101,16 @@ DROP TABLE IF EXISTS `product`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `product` (
-  `p_id` int(10) DEFAULT NULL COMMENT '平台id',
-  `g_id` bigint(11) DEFAULT NULL COMMENT '商品id',
-  `pdt_id` bigint(11) DEFAULT NULL COMMENT '货品id',
+  `p_id` int(10) NOT NULL DEFAULT '0' COMMENT '平台id',
+  `g_id` bigint(11) NOT NULL DEFAULT '0' COMMENT '商品id',
+  `pdt_id` bigint(11) NOT NULL DEFAULT '0' COMMENT '货品id',
   `pdt_cost_price` decimal(10,2) DEFAULT NULL COMMENT '成本价',
-  `pdt_saled` tinyint(1) NOT NULL DEFAULT '0' COMMENT '销售状态, 0:未售; 1:销售中; 2:已售出',
-  `pdt_status` tinyint(1) NOT NULL DEFAULT '1' COMMENT '数据记录状态，0:废弃，1:有效',
-  KEY `p_id` (`p_id`),
-  KEY `g_id` (`g_id`),
-  KEY `pdt_id` (`pdt_id`),
-  KEY `pdt_saled` (`pdt_saled`),
-  KEY `pdt_status` (`pdt_status`)
+  `pdt_sale_price` decimal(10,2) DEFAULT NULL COMMENT '销售价',
+  `pdt_sale_status` tinyint(1) NOT NULL DEFAULT '0' COMMENT '销售状态, 0:未售; 1:销售中; 2:已售出',
+  `pdt_data_status` tinyint(1) NOT NULL DEFAULT '1' COMMENT '数据记录状态，0:废弃，1:有效',
+  PRIMARY KEY (`p_id`,`g_id`,`pdt_id`),
+  KEY `pdt_sale_status` (`pdt_sale_status`),
+  KEY `pdt_data_status` (`pdt_data_status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='货品';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -136,4 +136,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2018-05-07 20:46:41
+-- Dump completed on 2018-05-10 14:04:31
