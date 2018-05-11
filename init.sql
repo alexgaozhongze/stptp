@@ -52,6 +52,7 @@ CREATE TABLE `good` (
   `p_id` int(10) DEFAULT NULL COMMENT '平台id',
   `g_id` bigint(11) DEFAULT NULL COMMENT '商品id',
   `g_keyword` varchar(50) NOT NULL DEFAULT '' COMMENT '关键词',
+  `g_buy_mdiff_price` decimal(10,2) DEFAULT '0.00' COMMENT '销售求购最低差价',
   `g_status` tinyint(1) NOT NULL DEFAULT '1' COMMENT '数据记录状态，0为废弃，1为有效',
   KEY `g_id` (`g_id`),
   KEY `g_status` (`g_status`)
@@ -64,7 +65,7 @@ CREATE TABLE `good` (
 
 LOCK TABLES `good` WRITE;
 /*!40000 ALTER TABLE `good` DISABLE KEYS */;
-INSERT INTO `good` VALUES (1,2151568372,'九头蛇大行动',1);
+INSERT INTO `good` VALUES (1,2151568372,'九头蛇大行动',0.30,1);
 /*!40000 ALTER TABLE `good` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -136,4 +137,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2018-05-10 14:04:31
+-- Dump completed on 2018-05-11 11:51:41
